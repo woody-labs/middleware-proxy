@@ -4,6 +4,8 @@ namespace Woody\Middleware\Proxy;
 
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Server\RequestHandlerInterface;
+use Woody\Http\Server\Middleware\MiddlewareInterface;
 use Woody\Middleware\Proxy\Driver\DriverInterface;
 use Woody\Middleware\Proxy\Model\RouteInterface;
 use Woody\Middleware\Proxy\Model\ServiceInterface;
@@ -15,7 +17,7 @@ use Woody\Middleware\Proxy\Model\UpstreamInterface;
  *
  * @package Woody\Middleware\Proxy
  */
-class ProxyMiddleware
+class ProxyMiddleware implements MiddlewareInterface
 {
 
     const HEADER_VIA = 'woody';
@@ -57,6 +59,16 @@ class ProxyMiddleware
     }
 
     /**
+     * @param bool $debug
+     *
+     * @return bool
+     */
+    public function isEnabled(bool $debug): bool
+    {
+        return true;
+    }
+
+    /**
      * @param \Woody\Middleware\Proxy\Model\ServiceInterface $service
      *
      * @return \Woody\Middleware\Proxy\ProxyMiddleware
@@ -82,10 +94,11 @@ class ProxyMiddleware
 
     /**
      * @param \Psr\Http\Message\ServerRequestInterface $request
+     * @param \Psr\Http\Server\RequestHandlerInterface $handler
      *
      * @return \Psr\Http\Message\ResponseInterface
      */
-    public function handle(ServerRequestInterface $request): ResponseInterface
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         // Prepare request.
         $request = $this->preHandle($request);
