@@ -1,0 +1,34 @@
+{
+    "name": "woody/middleware-proxy",
+    "description": "",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Sebastien Malot",
+            "email": "sebastien@malot.fr"
+        }
+    ],
+    "require": {
+        "php": "^7.1",
+        "woody/http-server-middleware": "dev-master"
+    },
+    "require-dev": {
+        "guzzlehttp/guzzle": "^6.0",
+        "swoft/swoole-ide-helper": "*"
+    },
+    "suggest":  {
+        "ext-swoole": "To use Swoole driver",
+        "guzzlehttp/guzzle": "To use Guzzle driver"
+    },
+    "autoload": {
+        "psr-4": {
+            "Woody\\Middleware\\Proxy\\": "src"
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true,
+    "config": {
+        "sort-packages": true
+    }
+}
