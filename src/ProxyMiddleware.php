@@ -109,15 +109,17 @@ class ProxyMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         // Prepare request.
-        $this->logger->debug('original: '.$request->getUri()->getPath(), ['correlation-id' => $request->getAttribute('correlation-id')]);
+        $this->logger->debug('original: '.$request->getUri(), ['correlation-id' => $request->getAttribute('correlation-id')]);
         $request = $this->preHandle($request);
-        $this->logger->debug('upstream: '.$request->getUri()->getPath(), ['correlation-id' => $request->getAttribute('correlation-id')]);
+        $this->logger->debug('upstream: '.$request->getUri(), ['correlation-id' => $request->getAttribute('correlation-id')]);
 
         // Do request to upstream.
         $start = microtime(true);
         $response = $this->driver->handle($request);
         $duration = microtime(true) - $start;
         $this->logger->debug('duration: '.round($duration*1000).'ms', ['correlation-id' => $request->getAttribute('correlation-id')]);
+
+        $response = $response->withHeader('X-Upstream-Duration', round($duration * 1000));
 
         // Alter response.
         $response = $this->postHandle($response);
