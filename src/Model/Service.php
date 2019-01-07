@@ -34,8 +34,6 @@ class Service implements ServiceInterface
     {
         $config += [
             'name' => '',
-            'protocol' => static::PROTOCOL_HTTP,
-            'port' => 80,
             'path' => '',
             'retries' => 5,
             'connection_timeout' => 60000,

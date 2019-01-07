@@ -11,6 +11,7 @@
     ],
     "require": {
         "php": "^7.1",
+        "monolog/monolog": "^1.20",
         "woody/http-server-middleware": "dev-master"
     },
     "require-dev": {

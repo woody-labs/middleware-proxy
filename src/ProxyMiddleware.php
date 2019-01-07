@@ -5,6 +5,7 @@ namespace Woody\Middleware\Proxy;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Psr\Log\LoggerInterface;
 use Woody\Http\Server\Middleware\MiddlewareInterface;
 use Woody\Middleware\Proxy\Driver\DriverInterface;
 use Woody\Middleware\Proxy\Model\RouteInterface;
@@ -23,6 +24,16 @@ class ProxyMiddleware implements MiddlewareInterface
     const HEADER_VIA = 'woody';
 
     /**
+     * @var \Woody\Middleware\Proxy\Driver\DriverInterface
+     */
+    protected $driver;
+
+    /**
+     * @var \Psr\Log\LoggerInterface
+     */
+    protected $logger;
+
+    /**
      * @var \Woody\Middleware\Proxy\Model\ServiceInterface[]
      */
     protected $services = [];
@@ -31,11 +42,6 @@ class ProxyMiddleware implements MiddlewareInterface
      * @var \Woody\Middleware\Proxy\Model\UpstreamInterface[]
      */
     protected $upstreams = [];
-
-    /**
-     * @var \Woody\Middleware\Proxy\Driver\DriverInterface
-     */
-    protected $driver;
 
     /**
      * @var array
@@ -52,10 +58,12 @@ class ProxyMiddleware implements MiddlewareInterface
      * ProxyMiddleware constructor.
      *
      * @param \Woody\Middleware\Proxy\Driver\DriverInterface $driver
+     * @param \Psr\Log\LoggerInterface $logger
      */
-    public function __construct(DriverInterface $driver)
+    public function __construct(DriverInterface $driver, LoggerInterface $logger)
     {
         $this->driver = $driver;
+        $this->logger = $logger;
     }
 
     /**
@@ -101,10 +109,15 @@ class ProxyMiddleware implements MiddlewareInterface
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         // Prepare request.
+        $this->logger->debug('original: '.$request->getUri()->getPath(), ['correlation-id' => $request->getAttribute('correlation-id')]);
         $request = $this->preHandle($request);
+        $this->logger->debug('upstream: '.$request->getUri()->getPath(), ['correlation-id' => $request->getAttribute('correlation-id')]);
 
         // Do request to upstream.
+        $start = microtime(true);
         $response = $this->driver->handle($request);
+        $duration = microtime(true) - $start;
+        $this->logger->debug('duration: '.round($duration*1000).'ms', ['correlation-id' => $request->getAttribute('correlation-id')]);
 
         // Alter response.
         $response = $this->postHandle($response);
@@ -158,7 +171,8 @@ class ProxyMiddleware implements MiddlewareInterface
             }
         }
 
-        throw new \RuntimeException('Unable to detect service');
+        // @todo: use woody http exception
+        throw new \RuntimeException('No Service found with those values');
     }
 
     /**
@@ -177,7 +191,8 @@ class ProxyMiddleware implements MiddlewareInterface
             }
         }
 
-        throw new \RuntimeException('Unable to detect upstream');
+        // @todo: use woody http exception
+        throw new \RuntimeException('No Upstream found with those values');
     }
 
     /**
@@ -203,20 +218,22 @@ class ProxyMiddleware implements MiddlewareInterface
         }
 
         // Alter path by removing route prefix.
+        $path = $uri->getPath();
+
         if ($route->getStripPath()) {
-            foreach ($route->getPaths() as $path) {
-                if (strpos($uri->getPath(), $path) === 0) {
-                    $path = substr($uri->getPath(), strlen($path)) ?: '/';
-                    $uri = $uri->withPath($path);
+            foreach ($route->getPaths() as $prefix) {
+                if (strpos($path, $prefix) === 0) {
+                    $path = substr($path, strlen($prefix)) ?: '';
                     break;
                 }
             }
         }
 
         // Alter path by adding service prefix.
-        if ($path = $service->getPath()) {
-            $uri = $uri->withPath($path.$uri->getPath());
+        if ($prefix = $service->getPath()) {
+            $path = $prefix.$path;
         }
+        $uri = $uri->withPath($path);
 
         // Remove headers.
         foreach ($this->headersToRemove as $header) {
